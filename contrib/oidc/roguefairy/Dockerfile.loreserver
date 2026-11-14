@@ -1,0 +1,115 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+#
+# Railway-ready Lore Server image pre-loaded with `roguefairy.toml` and `/data` stores.
+# Build from the repository root:
+#   docker build -f contrib/oidc/roguefairy/Dockerfile.loreserver -t rfs-loreserver .
+FROM rust:slim-trixie AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY .cargo .cargo
+COPY Cargo.toml Cargo.lock build-helper.rs ./
+COPY vendor vendor
+COPY lore lore
+COPY lore-aws lore-aws
+COPY lore-base lore-base
+COPY lore-capi lore-capi
+COPY lore-chaos-client lore-chaos-client
+COPY lore-client lore-client
+COPY lore-credential lore-credential
+COPY lore-error-set lore-error-set
+COPY lore-error-set-macro lore-error-set-macro
+COPY lore-fuse lore-fuse
+COPY lore-hashicorp lore-hashicorp
+COPY lore-integration-tests lore-integration-tests
+COPY lore-io lore-io
+COPY lore-macro lore-macro
+COPY lore-notification lore-notification
+COPY lore-proto lore-proto
+COPY lore-revision lore-revision
+COPY lore-server lore-server
+COPY lore-storage lore-storage
+COPY lore-telemetry lore-telemetry
+COPY lore-transport lore-transport
+
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        cargo build --release --locked --bin loreserver \
+            --config .cargo/neoverse-512tvb.toml --features lore-base/neoverse-512tvb; \
+    else \
+        cargo build --release --locked --bin loreserver; \
+    fi \
+    && cp /build/target/release/loreserver /build/loreserver-bin
+
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    gosu \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --create-home loreserver \
+    && mkdir -p /data /etc/lore/config
+
+COPY --from=builder /build/loreserver-bin /usr/local/bin/loreserver
+COPY --from=builder /build/lore-server/config/default.toml /etc/lore/config/default.toml
+COPY contrib/oidc/roguefairy/roguefairy.toml /etc/lore/config/roguefairy.toml
+
+RUN cat <<'EOF' >> /etc/lore/config/roguefairy.toml \
+    && chown -R loreserver:loreserver /data /etc/lore/config
+[immutable_store.local]
+path = "/data"
+
+[mutable_store.local]
+path = "/data"
+EOF
+
+RUN cat <<'EOF' > /usr/local/bin/docker-entrypoint.sh \
+    && chmod 0755 /usr/local/bin/docker-entrypoint.sh
+#!/bin/sh
+set -eu
+CONFIG_DIR="/etc/lore/config"
+if [ -n "${RFS_LORE_LOCAL_TOML:-}" ]; then
+    if [ ! -w "$CONFIG_DIR" ]; then
+        CONFIG_DIR="${TMPDIR:-/tmp}/lore-config"
+        rm -rf "$CONFIG_DIR"
+        (
+            umask 077
+            mkdir -p "$CONFIG_DIR"
+            cp /etc/lore/config/default.toml "$CONFIG_DIR/default.toml"
+            cp /etc/lore/config/roguefairy.toml "$CONFIG_DIR/roguefairy.toml"
+        )
+        export LORE_CONFIG_PATH="$CONFIG_DIR"
+    fi
+    (
+        umask 077
+        printf '%s\n' "$RFS_LORE_LOCAL_TOML" > "$CONFIG_DIR/local.toml"
+    )
+fi
+if [ "$(id -u)" = "0" ]; then
+    if [ "$CONFIG_DIR" != "/etc/lore/config" ]; then
+        chown -R loreserver:loreserver "$CONFIG_DIR"
+        chmod 0700 "$CONFIG_DIR"
+    elif [ -f "$CONFIG_DIR/local.toml" ]; then
+        chown loreserver:loreserver "$CONFIG_DIR/local.toml"
+        chmod 0600 "$CONFIG_DIR/local.toml"
+    fi
+    mkdir -p /data
+    chown loreserver:loreserver /data
+    exec gosu loreserver /usr/local/bin/loreserver "$@"
+fi
+exec /usr/local/bin/loreserver "$@"
+EOF
+
+ENV LORE_CONFIG_PATH=/etc/lore/config
+ENV LORE_ENV=roguefairy
+ENV RUST_LOG=info
+
+EXPOSE 41337/tcp 41337/udp 41339/tcp
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+name: lore-oidc-roguefairy
+
+x-authentik-env: &authentik-env
+  AUTHENTIK_POSTGRESQL__HOST: postgres
+  AUTHENTIK_POSTGRESQL__NAME: authentik
+  AUTHENTIK_POSTGRESQL__USER: authentik
+  AUTHENTIK_POSTGRESQL__PASSWORD: authentik-dev-password
+  AUTHENTIK_SECRET_KEY: local-dev-secret-key-not-for-production-use
+  AUTHENTIK_BOOTSTRAP_PASSWORD: admin
+  AUTHENTIK_BOOTSTRAP_EMAIL: admin@roguefairy.example
+  AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+  AUTHENTIK_DISABLE_UPDATE_CHECK: "true"
+  AUTHENTIK_DISABLE_STARTUP_ANALYTICS: "true"
+
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik-dev-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d authentik -U authentik"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  authentik:
+    image: ghcr.io/goauthentik/server:2026.8.5
+    command: server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *authentik-env
+    volumes:
+      - ./blueprint-local.yaml:/blueprints/custom/blueprint-local.yaml:ro
+    ports:
+      - "127.0.0.1:9000:9000"
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2026.8.5
+    command: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *authentik-env
+    volumes:
+      - ./blueprint-local.yaml:/blueprints/custom/blueprint-local.yaml:ro
+
+  bridge:
+    build:
+      context: ../../..
+      dockerfile: contrib/oidc/roguefairy/bridge/Dockerfile
+    depends_on:
+      authentik:
+        condition: service_healthy
+    environment:
+      RUST_LOG: info
+    volumes:
+      - ./bridge-local.toml:/etc/rfs-lore-bridge/config.toml:ro
+      - bridge-data:/data
+    command: ["--config", "/etc/rfs-lore-bridge/config.toml"]
+    ports:
+      - "127.0.0.1:8190:8190"
+
+volumes:
+  bridge-data:

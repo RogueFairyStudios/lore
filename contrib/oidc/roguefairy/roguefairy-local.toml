@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+#
+# Local development Lore Server configuration for `docker compose up -d`
+# in `contrib/oidc/roguefairy/`.
+
+[environment.endpoint]
+user_url = "http://localhost:8190"
+
+[server.auth]
+jwt_issuer = [
+    "http://localhost:9000/application/o/rfs-lore-cli/",
+    "http://localhost:9000/application/o/rfs-lore-ci/",
+]
+jwt_audience = ["https://localhost"]
+jwt_typ = ["JWT", "at+jwt"]
+resource_claim = "resources"
+repository_catalog = "user_service"
+
+[server.auth.oidc]
+client_id = "lore-cli-rfs"
+scopes = ["openid", "profile", "offline_access", "lore"]
+client_credentials_scopes = ["lore"]
+resource_template = "https://localhost/partitions/{id}"
+token_exchange_issuer = "http://localhost:8190"
+
+[immutable_store.local]
+path = "/tmp/lore-rfs-demo/server"
+
+[mutable_store.local]
+path = "/tmp/lore-rfs-demo/server"
+
+[telemetry.logger]
+format = "text"
+

@@ -1,0 +1,367 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+#
+# Local Docker Compose authentik blueprint mirroring Rogue Fairy Studios'
+# production groups, per-project custom attributes, and personas.
+# Development only — uses fixed test passwords and a fixed CI client secret.
+version: 1
+metadata:
+  name: Rogue Fairy Studios - Lore OIDC (Local Dev)
+entries:
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Brand
+      required: true
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Authentication flow
+      required: true
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Provider authorization flow (implicit consent)
+      required: true
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Provider invalidation flow
+      required: true
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: System - OAuth2 Provider - Scopes
+      required: true
+
+  - model: authentik_flows.flow
+    id: flow-rfs-lore-device-code
+    identifiers:
+      slug: rfs-lore-device-code
+    attrs:
+      name: Rogue Fairy Lore Device Code
+      title: Rogue Fairy Studios - Authorize Lore CLI
+      designation: stage_configuration
+      authentication: none
+
+  - model: authentik_brands.brand
+    identifiers:
+      domain: authentik-default
+    attrs:
+      flow_device_code: !KeyOf flow-rfs-lore-device-code
+
+  # Studio base groups matching https://auth.telluriancorp.info
+  - model: authentik_core.group
+    id: group-rfs-c-level
+    identifiers:
+      name: Rogue Fairy Studios - C-Level
+  - model: authentik_core.group
+    id: group-rfs-employees
+    identifiers:
+      name: Rogue Fairy Studios
+  - model: authentik_core.group
+    id: group-rfs-partners
+    identifiers:
+      name: Rogue Fairy Studios - Partners
+  - model: authentik_core.group
+    id: group-rfs-projects-root
+    identifiers:
+      name: Rogue Fairy Studios - Lore Projects
+
+  # Studio CI and per-project groups with native authentik JSON attributes
+  - model: authentik_core.group
+    id: group-rfs-lore-ci
+    identifiers:
+      name: Rogue Fairy Studios - Lore CI
+    attrs:
+      parent: !KeyOf group-rfs-projects-root
+      attributes:
+        lore_project: "*"
+        lore_actions:
+          - read
+          - write
+          - push-protected
+        lore_can_create_repo: false
+
+  - model: authentik_core.group
+    id: group-project-ghostlore-leads
+    identifiers:
+      name: Rogue Fairy Studios - GhostLore - Leads
+    attrs:
+      parent: !KeyOf group-rfs-projects-root
+      attributes:
+        lore_project: ghostlore
+        lore_visibility: internal
+        lore_actions:
+          - read
+          - write
+          - admin
+          - obliterate
+          - presign
+        lore_can_create_repo: true
+
+  - model: authentik_core.group
+    id: group-project-ghostlore-partners
+    identifiers:
+      name: Rogue Fairy Studios - GhostLore - Partners
+    attrs:
+      parent: !KeyOf group-rfs-projects-root
+      attributes:
+        lore_project: ghostlore
+        lore_visibility: internal
+        lore_actions:
+          - read
+        lore_can_create_repo: false
+
+  - model: authentik_core.group
+    id: group-project-animafaber-leads
+    identifiers:
+      name: Rogue Fairy Studios - Animafaber - Leads
+    attrs:
+      parent: !KeyOf group-rfs-projects-root
+      attributes:
+        lore_project: animafaber
+        lore_visibility: internal
+        lore_actions:
+          - read
+          - write
+          - admin
+          - presign
+        lore_can_create_repo: true
+
+  - model: authentik_core.group
+    id: group-project-secretproto-leads
+    identifiers:
+      name: Rogue Fairy Studios - SecretProto - Leads
+    attrs:
+      parent: !KeyOf group-rfs-projects-root
+      attributes:
+        lore_project: secretproto
+        lore_visibility: restricted
+        lore_actions:
+          - read
+          - write
+          - admin
+        lore_can_create_repo: true
+
+  # Local test users covering every Rogue Fairy Studios persona
+  - model: authentik_core.user
+    identifiers:
+      username: alice
+    attrs:
+      name: Alice C-Level
+      email: alice@roguefairy.example
+      password: alice
+      groups:
+        - !KeyOf group-rfs-c-level
+
+  - model: authentik_core.user
+    identifiers:
+      username: carla
+    attrs:
+      name: Carla GhostLore Lead
+      email: carla@roguefairy.example
+      password: carla
+      groups:
+        - !KeyOf group-rfs-employees
+        - !KeyOf group-project-ghostlore-leads
+        - !KeyOf group-project-secretproto-leads
+
+  - model: authentik_core.user
+    identifiers:
+      username: bruno
+    attrs:
+      name: Bruno Developer
+      email: bruno@roguefairy.example
+      password: bruno
+      groups:
+        - !KeyOf group-rfs-employees
+
+  - model: authentik_core.user
+    identifiers:
+      username: diego
+    attrs:
+      name: Diego Partner
+      email: diego@partner.example
+      password: diego
+      groups:
+        - !KeyOf group-rfs-partners
+        - !KeyOf group-project-ghostlore-partners
+
+  - model: authentik_core.user
+    identifiers:
+      username: eva
+    attrs:
+      name: Eva Unassigned Partner
+      email: eva@partner.example
+      password: eva
+      groups:
+        - !KeyOf group-rfs-partners
+
+  - model: authentik_core.user
+    identifiers:
+      username: ak-rfs-lore-ci-client_credentials
+    attrs:
+      name: Rogue Fairy Lore CI
+      email: ci@roguefairy.example
+      type: service_account
+      groups:
+        - !KeyOf group-rfs-lore-ci
+
+  - model: authentik_providers_oauth2.scopemapping
+    id: scope-rfs-lore
+    identifiers:
+      name: Rogue Fairy Lore Scope
+    attrs:
+      scope_name: lore
+      description: "Rogue Fairy Studios Lore identity, domain bounds, and project permissions"
+      expression: |
+        valid_actions = {
+            "read",
+            "write",
+            "owner",
+            "admin",
+            "migrate",
+            "push-protected",
+            "obliterate",
+            "presign",
+        }
+        c_level_groups = {"Rogue Fairy Studios - C-Level", "authentik Admins"}
+        employee_group = "Rogue Fairy Studios"
+        partner_group = "Rogue Fairy Studios - Partners"
+
+        is_c_level = False
+        is_employee = False
+        is_partner = False
+        can_create_any = False
+        global_actions = set()
+        projects = {}
+
+        for group in request.user.all_groups():
+            name = group.name
+            if name in c_level_groups:
+                is_c_level = True
+                can_create_any = True
+                global_actions.update(valid_actions)
+            if name == employee_group:
+                is_employee = True
+            if name == partner_group:
+                is_partner = True
+
+            attrs = group.attributes or {}
+            raw_project = attrs.get("lore_project")
+            if isinstance(raw_project, str):
+                slug = raw_project.strip().lower()
+                if slug:
+                    raw_actions = attrs.get("lore_actions") or []
+                    granted = set()
+                    if isinstance(raw_actions, list):
+                        for action in raw_actions:
+                            if isinstance(action, str) and action in valid_actions:
+                                granted.add(action)
+                    can_create = attrs.get("lore_can_create_repo") is True
+                    raw_vis = attrs.get("lore_visibility")
+                    visibility = (
+                        "internal"
+                        if raw_vis is None
+                        or (isinstance(raw_vis, str) and raw_vis.strip().lower() == "internal")
+                        else "restricted"
+                    )
+
+                    if slug == "*":
+                        global_actions.update(granted)
+                        if can_create:
+                            can_create_any = True
+                    else:
+                        entry = projects.get(slug)
+                        if entry is None:
+                            entry = {
+                                "actions": set(),
+                                "can_create_repo": False,
+                                "visibility": "internal",
+                            }
+                            projects[slug] = entry
+                        entry["actions"].update(granted)
+                        if can_create:
+                            entry["can_create_repo"] = True
+                        if visibility == "restricted":
+                            entry["visibility"] = "restricted"
+
+        serialized_projects = {}
+        for slug, entry in projects.items():
+            serialized_projects[slug] = {
+                "actions": sorted(entry["actions"]),
+                "can_create_repo": entry["can_create_repo"],
+                "visibility": entry["visibility"],
+            }
+
+        user_type = getattr(request.user, "type", "")
+        return {
+            "aud": ["https://localhost"],
+            "root_domains": ["localhost", "127.0.0.1"],
+            "identity": request.user.username,
+            "preferred_username": request.user.username,
+            "name": request.user.name or request.user.username,
+            "is_service_account": user_type == "service_account",
+            "rfs_lore": {
+                "is_c_level": is_c_level,
+                "is_employee": is_employee,
+                "is_partner": is_partner,
+                "can_create_any": can_create_any,
+                "global_actions": sorted(global_actions),
+                "projects": serialized_projects,
+            },
+        }
+
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-rfs-lore-cli
+    identifiers:
+      name: rfs-lore-cli
+    attrs:
+      client_type: public
+      client_id: lore-cli-rfs
+      redirect_uris: []
+      grant_types:
+        - urn:ietf:params:oauth:grant-type:device_code
+        - refresh_token
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-offline_access]]
+        - !KeyOf scope-rfs-lore
+
+  - model: authentik_core.application
+    identifiers:
+      slug: rfs-lore-cli
+    attrs:
+      name: Rogue Fairy Lore CLI
+      provider: !KeyOf provider-rfs-lore-cli
+
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-rfs-lore-ci
+    identifiers:
+      name: rfs-lore-ci
+    attrs:
+      client_type: confidential
+      client_id: lore-ci-rfs
+      # Development only.
+      client_secret: rfs-lore-ci-dev-secret
+      redirect_uris: []
+      grant_types:
+        - client_credentials
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      property_mappings:
+        - !KeyOf scope-rfs-lore
+
+  - model: authentik_core.application
+    identifiers:
+      slug: rfs-lore-ci
+    attrs:
+      name: Rogue Fairy Lore CI
+      provider: !KeyOf provider-rfs-lore-ci
+

@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+#
+# Production Lore Server configuration template for Rogue Fairy Studios.
+# Authenticates interactive users and CI pipelines against Tellurian authentik
+# (`https://auth.telluriancorp.info`) and authorizes per-project repositories
+# through `rfs-lore-bridge` (`https://lore-auth.roguefairy.net`).
+
+[environment.endpoint]
+user_url = "https://lore-auth.roguefairy.net"
+
+[server.auth]
+jwt_issuer = [
+    "https://auth.telluriancorp.info/application/o/rfs-lore-cli/",
+    "https://auth.telluriancorp.info/application/o/rfs-lore-ci/",
+]
+jwt_audience = ["https://lore.roguefairy.net"]
+jwt_typ = ["JWT", "at+jwt"]
+resource_claim = "resources"
+repository_catalog = "user_service"
+
+[server.auth.oidc]
+client_id = "lore-cli-rfs"
+scopes = ["openid", "profile", "offline_access", "lore"]
+client_credentials_scopes = ["lore"]
+resource_template = "https://lore.roguefairy.net/partitions/{id}"
+token_exchange_issuer = "https://lore-auth.roguefairy.net"
+

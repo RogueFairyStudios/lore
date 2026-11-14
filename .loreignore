@@ -20,6 +20,7 @@ contrib/bazel/.rbe-state/
 /context/plans/
 contrib/oidc/zitadel/local.toml
 contrib/oidc/zitadel/ci-secret
+contrib/oidc/roguefairy/local.toml
 
 #################
 ## Visual Studio

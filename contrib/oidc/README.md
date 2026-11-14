@@ -19,6 +19,10 @@ the token exchange service in [`exchange/`](exchange/README.md) beside the provi
 [Authentication](../../docs/reference/lore-server-config.md#authentication) in the server
 configuration reference for the settings.
 
+For a multi-project studio setup with authentik, `<project>/<repository>`
+namespaces, and a Rust token exchange and user directory service, see
+[`roguefairy/`](roguefairy/README.md).
+
 > [!WARNING]
 > These setups are for local development only:
 >

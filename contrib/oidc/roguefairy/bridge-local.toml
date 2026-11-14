@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+#
+# Local Docker Compose configuration for `rfs-lore-bridge`.
+
+bind = "0.0.0.0:8190"
+issuer = "http://localhost:8190"
+provider_url = "http://authentik:9000"
+
+login_issuers = [
+    "http://localhost:9000/application/o/rfs-lore-cli/",
+    "http://localhost:9000/application/o/rfs-lore-ci/",
+]
+login_audiences = ["https://localhost"]
+
+audience = "https://localhost"
+root_domains = ["localhost", "127.0.0.1"]
+resource_prefix = "https://localhost/partitions/"
+resource_id_template = "urc-{id}"
+token_lifetime_seconds = 300
+
+state_path = "/data/registry-state.json"
+signing_key_path = "/data/signing-key.pk8"
+
+[projects.ghostlore]
+visibility = "internal"
+
+[projects.animafaber]
+visibility = "internal"
+
+[projects.secretproto]
+visibility = "restricted"
+

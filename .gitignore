@@ -10,6 +10,7 @@
 
 # Local files
 lore-server/config/local*.toml
+contrib/oidc/roguefairy/local.toml
 **/.grafana.local.yaml
 contrib/bazel/.rbe-state/
 

@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2026 Rogue Fairy Studios
+# SPDX-License-Identifier: MIT
+#
+# Production configuration example for `rfs-lore-bridge`.
+# Scalar fields and list settings can also be overridden by `RFS_LORE_*`
+# environment variables (static `[projects.<slug>]` entries live in TOML).
+
+# Defaults to `0.0.0.0:8190`; `RFS_LORE_BIND` and Railway `PORT` override when unset here.
+# bind = "0.0.0.0:8190"
+issuer = "https://lore-auth.roguefairy.net"
+
+login_issuers = [
+    "https://auth.telluriancorp.info/application/o/rfs-lore-cli/",
+    "https://auth.telluriancorp.info/application/o/rfs-lore-ci/",
+]
+login_audiences = ["https://lore.roguefairy.net"]
+
+audience = "https://lore.roguefairy.net"
+root_domains = [".roguefairy.net"]
+resource_prefix = "https://lore.roguefairy.net/partitions/"
+resource_id_template = "urc-{id}"
+token_lifetime_seconds = 300
+
+# Persistent volume paths (in Railway, mount a volume at `/data`).
+# `RFS_LORE_SIGNING_KEY_B64` can alternatively supply a base64 PKCS#8 P-256 key.
+# Optional `user_state_path` (`RFS_LORE_USER_STATE_PATH`) separates user directory
+# snapshots from `state_path` so user logins don't rewrite repository state.
+state_path = "/data/registry-state.json"
+user_state_path = "/data/users-state.json"
+signing_key_path = "/data/signing-key.pk8"
+
+# Optional authentik Core API integration (`RFS_LORE_AUTHENTIK_API_TOKEN`) for:
+# - resolving users in `UserService` before their first Lore token exchange, and
+# - discovering a project's `lore_visibility` when a C-Level user outside that
+#   project's group registers its first repository.
+# `user_id_field` selects `"username"` (default; matches `Rogue Fairy Lore Scope`)
+# or `"uuid"` (requires `Rogue Fairy Lore Scope` to emit `"identity": str(request.user.uuid)`).
+[authentik]
+base_url = "https://auth.telluriancorp.info"
+user_id_field = "username"
+
+# Optional static project visibility declarations. Projects registered by a
+# member of their authentik project group (or resolved via `[authentik]` above)
+# learn `lore_visibility` automatically from authentik group attributes.
+[projects.ghostlore]
+visibility = "internal"
+
+[projects.animafaber]
+visibility = "internal"
+
+[projects.geppetto]
+visibility = "internal"
+
+[projects.goethe]
+visibility = "internal"
+
