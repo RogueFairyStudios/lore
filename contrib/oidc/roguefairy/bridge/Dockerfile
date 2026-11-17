@@ -30,12 +30,10 @@ RUN sed -i '/^members = \[/,/^\]/c\members = ["lore-base", "lore-error-set", "lo
     && cargo build --release --locked \
         --manifest-path /build/contrib/oidc/roguefairy/bridge/Cargo.toml \
         --bin rfs-lore-bridge \
-    && rm -rf \
-        /build/contrib/oidc/roguefairy/bridge/src \
-        /build/contrib/oidc/roguefairy/bridge/target/release/rfs-lore-bridge \
-        /build/contrib/oidc/roguefairy/bridge/target/release/deps/librfs_lore_bridge* \
-        /build/contrib/oidc/roguefairy/bridge/target/release/deps/rfs_lore_bridge* \
-        /build/contrib/oidc/roguefairy/bridge/target/release/.fingerprint/rfs-lore-bridge-*
+    && cargo clean --release \
+        --manifest-path /build/contrib/oidc/roguefairy/bridge/Cargo.toml \
+        -p rfs-lore-bridge \
+    && rm -rf /build/contrib/oidc/roguefairy/bridge/src
 
 COPY contrib/oidc/roguefairy/bridge/src contrib/oidc/roguefairy/bridge/src
 
